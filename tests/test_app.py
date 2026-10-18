@@ -1,6 +1,8 @@
 import socket
 from app import app 
 
+# test cases for the app.py file
+
 def test_health():
     client = app.test_client()
     response = client.get("/health")
