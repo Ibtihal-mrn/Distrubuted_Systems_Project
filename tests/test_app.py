@@ -13,7 +13,7 @@ def test_home():
     client = app.test_client()
     response = client.get("/")
     assert response.status_code == 200 
-    assert response.json == {"message" : "Welcome to this photo-storage app", "pod": socket.gethostname()}
+    assert response.json == {"message" : "Hello to this photo-storage app", "pod": socket.gethostname()}
 
 def test_failure():
     client = app.test_client()
