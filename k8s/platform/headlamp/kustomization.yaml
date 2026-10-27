@@ -3,6 +3,7 @@ kind: Kustomization
 resources: 
   - kubernetes-headlamp.yaml
   - ingress.yaml
+  - rbac.yaml
 images:
   - name: ghcr.io/headlamp-k8s/headlamp
     newTag: v0.46.0
