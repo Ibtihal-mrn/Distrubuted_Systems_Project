@@ -1,9 +1,8 @@
 apiVersion: apps/v1
-kind: Deployment 
+kind: Deployment
 metadata:
   name: photo-service
 spec:
-  replicas: 3
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -21,9 +20,16 @@ spec:
       - name: photo-service
         image: photo-service:v1
         imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
         ports:
           - containerPort: 8080
         readinessProbe:
           httpGet:
-            path: /health 
+            path: /health
             port: 8080
