@@ -3,5 +3,7 @@ kind: Kustomization
 resources:
   - ../../base/
   - ../../base/db
+  - ../../base/db-cluster
+  - ../../base/db-cluster-s1
   - namespace.yaml
 namespace: dev
