@@ -1,0 +1,19 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata: 
+  name: photos-s0
+spec: 
+  instances: 2
+  storage:
+    size: 750Mi
+  bootstrap:
+    initdb:
+      database: photos
+      owner: photos
+  resources: 
+    requests: 
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
