@@ -18,7 +18,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - run: ./scripts/deploy-test.sh "${GITHUB_SHA::7}"
+      - run: ./scripts/deploy.sh test "${GITHUB_SHA::7}"
 
   smoke-test:
     needs: deploy-test
