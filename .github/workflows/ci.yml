@@ -13,9 +13,26 @@ jobs:
       - run: .venv/bin/pip install -r requirements-dev.txt
       - run: .venv/bin/python -m pytest
 
-  deploy:
+  deploy-test:
     needs: test
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - run: ./scripts/deploy-test.sh "${GITHUB_SHA::7}"
+
+  smoke-test:
+    needs: deploy-test
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/smoke-test.sh test
+
+  deploy-prod:
+    needs: smoke-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/deploy.sh prod "${GITHUB_SHA::7}"
+      - run: ./scripts/smoke-test.sh prod
