@@ -9,11 +9,16 @@ def test_health():
     assert response.status_code == 200 
     assert response.data == b"ok"
 
-def test_home():
+def test_home(monkeypatch):
+    monkeypatch.setenv("APP_VERSION", "test-1")
     client = app.test_client()
     response = client.get("/")
-    assert response.status_code == 200 
-    assert response.json == {"message" : "Hello to this photo-storage app", "pod": socket.gethostname()}
+    assert response.status_code == 200
+    assert response.json == {
+        "message": "Hello to this photo-storage app",
+        "pod": socket.gethostname(),
+        "version": "test-1",
+    }
 
 def test_failure():
     client = app.test_client()
