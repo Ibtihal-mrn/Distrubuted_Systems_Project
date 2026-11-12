@@ -14,7 +14,7 @@ esac
 if docker image inspect photo-service:"$TAG" >/dev/null 2>&1; then
   echo "Image photo-service:$TAG déjà présente, pas de reconstruction."
 else
-  docker build -t photo-service:"$TAG" ./app
+  docker build --build-arg APP_VERSION="$TAG" -t photo-service:"$TAG" ./app
 fi
 kind load docker-image photo-service:"$TAG" --name photo
 
