@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../base/
+- namespace.yaml
+namespace: prod
+patches:
+- patch: |-
+    - op: replace
+      path: /spec/rules/0/host
+      value: prod.photo.localhost
+  target:
+    kind: Ingress
+    name: photo-service
+images:
+- name: photo-service
+  newTag: v1
