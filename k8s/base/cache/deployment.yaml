@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: varnish
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: varnish 
+  template:
+    metadata:
+      labels:
+        app: varnish
+    spec:
+      containers:
+      - name: varnish
+        image: varnish:9.1.0-2
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 512Mi
+        ports:
+          - containerPort: 80
+        readinessProbe:
+          tcpSocket:
+            port: 80
+        volumeMounts:
+          - name: vcl
+            mountPath: /etc/varnish/default.vcl
+            subPath: default.vcl
+          - name: workdir
+            mountPath: /var/lib/varnish/varnishd
+        env:
+          - name: VARNISH_SIZE
+            value: "64M"
+      volumes:
+        - name: vcl
+          configMap:
+            name: varnish-vcl
+        - name: workdir
+          emptyDir:
+            medium: Memory
+      
+    
+
