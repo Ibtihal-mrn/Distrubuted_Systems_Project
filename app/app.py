@@ -72,6 +72,12 @@ def home():
                    version=os.environ.get("APP_VERSION", "dev"))
 
 
+@app.route("/ui")
+def interface():
+    """Page web : envoi, liste, doublons, comparaison."""
+    return app.send_static_file("index.html")
+
+
 @app.route("/health")
 def health():
     # Volontairement sans accès aux bases : sert de sonde de disponibilité.

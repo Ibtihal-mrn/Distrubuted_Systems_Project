@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photothèque</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --carte: #ffffff; --texte: #1b1f24; --discret: #5b6572;
+    --bordure: #d9dee5; --accent: #2457d6; --accent-texte: #ffffff;
+    --ok: #17803d; --alerte: #a15c00; --danger: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151a; --carte: #1b2027; --texte: #e8ebef; --discret: #9aa4b2;
+      --bordure: #2f3742; --accent: #6b93ff; --accent-texte: #0b1020;
+      --ok: #4cc27a; --alerte: #f0b04a; --danger: #ff8a7d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--texte);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 0 0 12px; }
+  .sous-titre { color: var(--discret); margin: 0 0 24px; }
+  section { background: var(--carte); border: 1px solid var(--bordure);
+            border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  button, .bouton { font: inherit; cursor: pointer; border-radius: 8px; padding: 8px 14px;
+         border: 1px solid var(--bordure); background: var(--carte); color: var(--texte); }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.principal { background: var(--accent); color: var(--accent-texte); border-color: var(--accent); }
+  button.danger { color: var(--danger); }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  input[type=file] { max-width: 100%; }
+  .ligne { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .messages { margin-top: 12px; padding: 0; list-style: none; }
+  .messages li { padding: 4px 0; }
+  .ok { color: var(--ok); } .alerte { color: var(--alerte); } .erreur { color: var(--danger); }
+  .grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+  .photo { border: 1px solid var(--bordure); border-radius: 10px; overflow: hidden;
+           background: var(--bg); display: flex; flex-direction: column; }
+  .vignette { width: 100%; height: 140px; object-fit: cover; display: block; background: var(--bordure); }
+  .sans-apercu { height: 140px; display: flex; align-items: center; justify-content: center;
+                 color: var(--discret); font-size: .85rem; text-align: center; padding: 8px; background: var(--bordure); }
+  .infos { padding: 10px; font-size: .88rem; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .nom { font-weight: 600; word-break: break-all; }
+  .meta { color: var(--discret); }
+  .actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: auto; padding-top: 6px; }
+  .actions label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .resultat { margin-top: 14px; padding: 12px; border: 1px solid var(--bordure); border-radius: 8px; }
+  .groupe { border: 1px solid var(--bordure); border-radius: 10px; padding: 12px; margin-top: 12px; }
+  .groupe .grille { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); margin-top: 10px; }
+  .vide { color: var(--discret); }
+  @media (prefers-reduced-motion: no-preference) { button { transition: border-color .15s; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Photothèque</h1>
+  <p class="sous-titre">Envoie tes photos, retrouve les doublons et compare-les.</p>
+
+  <section aria-labelledby="titre-envoi">
+    <h2 id="titre-envoi">Ajouter des photos</h2>
+    <div class="ligne">
+      <input id="fichiers" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.heic,.heif,image/*"
+             aria-label="Choisir des photos à envoyer">
+      <button id="envoyer" class="principal" type="button">Envoyer</button>
+    </div>
+    <p class="meta" style="margin:8px 0 0">Formats : jpg, png, webp, gif, heic. Maximum 10 Mo par fichier.</p>
+    <ul id="messages" class="messages" aria-live="polite"></ul>
+  </section>
+
+  <section aria-labelledby="titre-photos">
+    <h2 id="titre-photos">Mes photos <span id="compte" class="meta"></span></h2>
+    <div class="ligne" style="margin-bottom:14px">
+      <button id="comparer" type="button" disabled>Comparer les 2 photos cochées</button>
+      <span id="aide-comparer" class="meta">Coche deux photos pour les comparer.</span>
+    </div>
+    <div id="comparaison" aria-live="polite"></div>
+    <div id="photos" class="grille"></div>
+  </section>
+
+  <section aria-labelledby="titre-doublons">
+    <h2 id="titre-doublons">Doublons</h2>
+    <button id="chercher" type="button">Chercher les doublons</button>
+    <div id="doublons" aria-live="polite"></div>
+  </section>
+</main>
+
+<script>
+  const $ = (selecteur) => document.querySelector(selecteur);
+
+  // Crée un élément HTML. Les textes passent par textContent : un nom de
+  // fichier ne peut jamais être interprété comme du code HTML.
+  function el(balise, proprietes = {}, ...enfants) {
+    const noeud = document.createElement(balise);
+    for (const [cle, valeur] of Object.entries(proprietes)) {
+      if (cle === "texte") noeud.textContent = valeur;
+      else if (cle === "classe") noeud.className = valeur;
+      else if (cle.startsWith("on")) noeud.addEventListener(cle.slice(2), valeur);
+      else noeud.setAttribute(cle, valeur);
+    }
+    noeud.append(...enfants);
+    return noeud;
+  }
+
+  function taille(octets) {
+    if (octets < 1024) return octets + " o";
+    if (octets < 1024 * 1024) return (octets / 1024).toFixed(1) + " Ko";
+    return (octets / 1024 / 1024).toFixed(1) + " Mo";
+  }
+
+  function date(texte) {
+    // La base enregistre en UTC, sans indication de fuseau : on l'ajoute.
+    return new Date(texte + "Z").toLocaleString("fr-BE");
+  }
+
+  function message(classe, texte) {
+    $("#messages").append(el("li", { classe, texte }));
+  }
+
+  async function appeler(chemin, options) {
+    const reponse = await fetch(chemin, options);
+    if (reponse.status === 204) return null;
+    const donnees = await reponse.json();
+    if (!reponse.ok) throw new Error(donnees.erreur || "erreur " + reponse.status);
+    return donnees;
+  }
+
+  // Vignette ; si le navigateur ne sait pas afficher le format (HEIC), on met un texte.
+  function vignette(photo, classeSupp) {
+    const image = el("img", { classe: "vignette", src: "/photos/" + photo.id,
+                              alt: photo.nom, loading: "lazy" });
+    image.addEventListener("error", () => {
+      image.replaceWith(el("div", { classe: "sans-apercu", texte: "Aperçu indisponible" }));
+    });
+    return image;
+  }
+
+  // ------------------------------------------------------------- liste
+
+  async function charger() {
+    const photos = await appeler("/photos");
+    $("#compte").textContent = "(" + photos.length + ")";
+    const zone = $("#photos");
+    zone.replaceChildren();
+    if (photos.length === 0) {
+      zone.append(el("p", { classe: "vide", texte: "Aucune photo pour l'instant." }));
+    }
+    for (const photo of photos) {
+      const case_ = el("input", { type: "checkbox", value: photo.id,
+                                  "aria-label": "Comparer " + photo.nom });
+      case_.addEventListener("change", majComparaison);
+      zone.append(el("article", { classe: "photo" },
+        vignette(photo),
+        el("div", { classe: "infos" },
+          el("span", { classe: "nom", texte: photo.nom }),
+          el("span", { classe: "meta", texte: taille(photo.taille) + " · " + photo.type_mime }),
+          el("span", { classe: "meta", texte: date(photo.date_ajout) + " · shard " + photo.shard }),
+          el("div", { classe: "actions" },
+            el("label", {}, case_, "Comparer"),
+            el("button", { classe: "danger", type: "button",
+                           "aria-label": "Supprimer " + photo.nom,
+                           texte: "Supprimer",
+                           onclick: () => supprimer(photo.id, photo.nom) })))));
+    }
+    majComparaison();
+  }
+
+  // ------------------------------------------------------------- envoi
+
+  async function envoyer() {
+    const fichiers = [...$("#fichiers").files];
+    if (fichiers.length === 0) { message("alerte", "Choisis au moins une photo."); return; }
+    $("#envoyer").disabled = true;
+    for (const fichier of fichiers) {
+      const formulaire = new FormData();
+      formulaire.append("photo", fichier);
+      try {
+        const photo = await appeler("/photos", { method: "POST", body: formulaire });
+        if (photo.doublons.length > 0) {
+          const noms = photo.doublons.map((d) => d.nom).join(", ");
+          message("alerte", fichier.name + " : envoyée, mais identique à " + noms + ".");
+        } else {
+          message("ok", fichier.name + " : envoyée.");
+        }
+      } catch (e) {
+        message("erreur", fichier.name + " : " + e.message);
+      }
+    }
+    $("#fichiers").value = "";
+    $("#envoyer").disabled = false;
+    await charger();
+  }
+
+  // ------------------------------------------------------- suppression
+
+  async function supprimer(id, nom) {
+    if (!confirm("Supprimer « " + nom + " » ?")) return;
+    try {
+      await appeler("/photos/" + id, { method: "DELETE" });
+    } catch (e) {
+      message("erreur", nom + " : " + e.message);
+    }
+    $("#comparaison").replaceChildren();
+    await charger();
+    if ($("#doublons").children.length > 0) await chercherDoublons();
+  }
+
+  // -------------------------------------------------------- comparaison
+
+  function cochees() {
+    return [...document.querySelectorAll("#photos input[type=checkbox]:checked")];
+  }
+
+  function majComparaison() {
+    const n = cochees().length;
+    $("#comparer").disabled = n !== 2;
+    $("#aide-comparer").textContent =
+      n === 2 ? "Prêt à comparer." : "Coche deux photos pour les comparer (" + n + "/2).";
+  }
+
+  async function comparer() {
+    const [a, b] = cochees().map((c) => c.value);
+    const zone = $("#comparaison");
+    try {
+      const r = await appeler("/compare?a=" + a + "&b=" + b);
+      zone.replaceChildren(el("div", { classe: "resultat" },
+        el("strong", { classe: r.identiques ? "alerte" : "ok",
+                       texte: r.identiques ? "Photos identiques (même contenu)"
+                                           : "Photos différentes" }),
+        el("div", { texte: r.a.nom + " (" + taille(r.a.taille) + ")  ↔  " +
+                           r.b.nom + " (" + taille(r.b.taille) + ")" }),
+        el("div", { classe: "meta", texte: "Écart de taille : " + taille(r.difference_taille) +
+                           " · " + (r.meme_type ? "même format" : "formats différents") })));
+    } catch (e) {
+      zone.replaceChildren(el("p", { classe: "erreur", texte: e.message }));
+    }
+  }
+
+  // ----------------------------------------------------------- doublons
+
+  async function chercherDoublons() {
+    const zone = $("#doublons");
+    try {
+      const groupes = await appeler("/duplicates");
+      zone.replaceChildren();
+      if (groupes.length === 0) {
+        zone.append(el("p", { classe: "ok", texte: "Aucun doublon trouvé." }));
+        return;
+      }
+      zone.append(el("p", { classe: "meta",
+        texte: groupes.length + " groupe(s) de photos identiques. Garde celle que tu veux, supprime les autres." }));
+      for (const groupe of groupes) {
+        const grille = el("div", { classe: "grille" });
+        for (const photo of groupe.photos) {
+          grille.append(el("article", { classe: "photo" },
+            vignette(photo),
+            el("div", { classe: "infos" },
+              el("span", { classe: "nom", texte: photo.nom }),
+              el("button", { classe: "danger", type: "button", texte: "Supprimer",
+                             "aria-label": "Supprimer " + photo.nom,
+                             onclick: () => supprimer(photo.id, photo.nom) }))));
+        }
+        zone.append(el("div", { classe: "groupe" },
+          el("strong", { texte: groupe.photos.length + " photos identiques (" + taille(groupe.taille) + " chacune)" }),
+          grille));
+      }
+    } catch (e) {
+      zone.replaceChildren(el("p", { classe: "erreur", texte: e.message }));
+    }
+  }
+
+  $("#envoyer").addEventListener("click", envoyer);
+  $("#comparer").addEventListener("click", comparer);
+  $("#chercher").addEventListener("click", chercherDoublons);
+  charger().catch((e) => message("erreur", "Impossible de charger les photos : " + e.message));
+</script>
+</body>
+</html>
