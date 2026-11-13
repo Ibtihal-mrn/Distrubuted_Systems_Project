@@ -33,3 +33,7 @@ spec:
           httpGet:
             path: /health
             port: 8080
+                lifecycle:
+        preStop:
+          exec:
+            command: ["sleep", "10"]
