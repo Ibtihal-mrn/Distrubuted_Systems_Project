@@ -2,12 +2,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-ENV="${1:?Usage: deploy.sh <test|prod> <tag>}"
+ENV="${1:?Usage: deploy.sh <test|prod|dev> <tag>}"
 TAG="${2:?Please provide a tag for the deployment.}"
 
 case "$ENV" in
-  test|prod) ;;
-  *) echo "Environnement inconnu : $ENV (attendu : test ou prod)"; exit 1 ;;
+  test|prod|dev) ;;
+  *) echo "Environnement inconnu : $ENV (attendu : test ou prod ou dev)"; exit 1 ;;
 esac
 
 # Construit l'image seulement si elle n'existe pas encore (en prod, c'est celle de test)
