@@ -2,20 +2,21 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: photo-service
+  annotations:
+    # Taille maximale d'un corps de requête accepté par nginx.
+    # Défaut : 1m, ce qui bloque les photos avec une erreur 413.
+    # 10m = même limite que MAX_CONTENT_LENGTH dans app.py.
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
 spec:
-  ingressClassName: nginx 
+  ingressClassName: nginx
   rules:
     - host: photo.localhost
-      http: 
-        paths: 
+      http:
+        paths:
           - path: /
             pathType: Prefix
             backend:
               service:
                 name: photo-service
-                port: 
+                port:
                   number: 80
-
-
-  
-

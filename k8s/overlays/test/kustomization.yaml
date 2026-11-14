@@ -3,6 +3,8 @@ kind: Kustomization
 resources:
 - ../../base/
 - ../../base/hpa
+- ../../base/db-cluster
+- ../../base/db-cluster-s1
 - namespace.yaml
 namespace: test
 patches:
@@ -15,4 +17,4 @@ patches:
     name: photo-service
 images:
 - name: photo-service
-  newTag: v1
+  newTag: local1
