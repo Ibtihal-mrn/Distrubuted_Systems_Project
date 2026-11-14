@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: photo-migrate
+  labels:
+    # Étiquette utilisée par deploy.sh pour appliquer ce Job en premier
+    component: migration
+spec:
+  # Si le pod échoue, Kubernetes réessaie jusqu'à 6 fois
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        # différent de "photo-service" : le Service ne doit pas
+        # envoyer de trafic vers ce pod.
+        app: photo-migrate
+    spec:
+      # Un Job exige Never ou OnFailure (jamais Always, comme un Deployment)
+      restartPolicy: OnFailure
+      containers:
+      - name: migrate
+        # Même image que l'app : l'overlay remplace ce tag par le SHA du commit,
+        # donc le migrate.py exécuté est celui du commit déployé.
+        image: photo-service:v1
+        imagePullPolicy: IfNotPresent
+        command: ["python", "migrate.py"]
+        env:
+        - name: SHARD0_DSN
+          valueFrom:
+            secretKeyRef:
+              name: photos-s0-app
+              key: uri
+        - name: SHARD1_DSN
+          valueFrom:
+            secretKeyRef:
+              name: photos-s1-app
+              key: uri

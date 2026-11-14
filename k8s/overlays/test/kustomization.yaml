@@ -17,4 +17,4 @@ patches:
     name: photo-service
 images:
 - name: photo-service
-  newTag: v1
+  newTag: local1

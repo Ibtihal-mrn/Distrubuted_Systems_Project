@@ -20,6 +20,17 @@ spec:
       - name: photo-service
         image: photo-service:v1
         imagePullPolicy: IfNotPresent
+        env:
+        - name: SHARD0_DSN
+          valueFrom:
+            secretKeyRef:
+              name: photos-s0-app   # Secret créé automatiquement par CloudNativePG
+              key: uri              # clé qui contient postgresql://user:mdp@photos-s0-rw:5432/photos
+        - name: SHARD1_DSN
+          valueFrom:
+            secretKeyRef:
+              name: photos-s1-app
+              key: uri
         resources:
           requests:
             cpu: 50m
