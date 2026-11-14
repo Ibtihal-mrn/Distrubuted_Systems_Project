@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photos : connexion</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="accueil">
+
+  <!-- Côté gauche : une planche de six tirages qui apparaissent l'un après l'autre -->
+  <section class="accueil-visuel" aria-label="Présentation">
+    <div class="planche" aria-hidden="true">
+      <div class="cadre" style="--i:0"><div class="vue vue-1"></div></div>
+      <div class="cadre" style="--i:1"><div class="vue vue-2"></div></div>
+      <div class="cadre" style="--i:2"><div class="vue vue-3"></div></div>
+      <div class="cadre" style="--i:3"><div class="vue vue-4"></div></div>
+      <div class="cadre" style="--i:4"><div class="vue vue-5"></div></div>
+      <div class="cadre" style="--i:5"><div class="vue vue-6"></div></div>
+    </div>
+    <div>
+      <h1>Vos photos, rangées et partagées.</h1>
+      <p>Envoyez vos photos, repérez les doublons, classez-les en albums et partagez-les avec les personnes de votre choix.</p>
+    </div>
+  </section>
+
+  <!-- Côté droit : le formulaire -->
+  <main class="accueil-formulaire">
+    <form id="form-connexion" class="formulaire-connexion">
+      <span class="marque">Photos</span>
+      <h2 id="titre-formulaire">Connexion</h2>
+
+      <div class="champ">
+        <label for="email">Email</label>
+        <input id="email" type="email" required autocomplete="username">
+      </div>
+      <div class="champ">
+        <label for="mdp">Mot de passe</label>
+        <input id="mdp" type="password" required minlength="8" autocomplete="current-password">
+        <span class="aide">8 caractères minimum</span>
+      </div>
+
+      <div class="ligne">
+        <button type="submit" id="btn-principal" class="bouton">Se connecter</button>
+        <button type="button" id="btn-basculer" class="bouton secondaire">Créer un compte</button>
+      </div>
+      <p id="msg-connexion" class="msg" role="alert"></p>
+    </form>
+  </main>
+
+</div>
+<script type="module" src="/static/js/connexion.js"></script>
+</body>
+</html>

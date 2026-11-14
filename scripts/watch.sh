@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Usage : watch.sh <test|prod>
 # Envoie des requêtes en continu et compte les erreurs. Ctrl+C pour afficher le bilan.
-URL="http://${1:-prod}.photo.localhost/"
+URL="http://${1:-prod}.photo.localhost"
 ok=0
 ko=0
 trap 'echo; echo "Bilan : $ok requêtes OK, $ko en erreur"; exit 0' INT
