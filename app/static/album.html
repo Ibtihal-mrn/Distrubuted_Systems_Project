@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photos : album</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="page">
+  <header id="entete" class="entete"></header>
+
+  <a class="retour" href="/mes-albums">Tous les albums</a>
+  <div class="titre-page" style="margin: 8px 0 0">
+    <div class="ligne">
+      <h1 id="titre-album"></h1>
+      <span id="badge-album" class="badge"></span>
+    </div>
+    <button id="btn-ajouter" class="bouton">Ajouter des photos</button>
+  </div>
+  <p id="msg-album" class="msg" role="status"></p>
+
+  <!-- Réservé au propriétaire : <details> s'ouvre et se ferme sans JavaScript -->
+  <details id="gestion" class="panneau gestion" hidden>
+    <summary>Paramètres de l'album</summary>
+
+    <form id="form-parametres" class="formulaire-album">
+      <input id="nom-album" type="text" maxlength="100" required aria-label="Nom de l'album">
+      <label class="interrupteur">
+        <input id="album-partage" type="checkbox">
+        <span class="piste"></span>
+        Partagé
+      </label>
+      <button type="submit" class="bouton">Enregistrer</button>
+    </form>
+
+    <div id="bloc-membres" hidden>
+      <h2 class="sous-titre">Membres</h2>
+      <ul id="liste-membres" class="liste-membres"></ul>
+      <p id="aucun-membre" class="muted" hidden>Aucun membre pour l'instant.</p>
+      <form id="form-membre" class="ligne">
+        <input id="email-membre" type="email" placeholder="Email du membre à ajouter" required aria-label="Email du membre à ajouter">
+        <button type="submit" class="bouton">Ajouter ce membre</button>
+      </form>
+    </div>
+
+    <div class="zone-danger">
+      <button id="btn-supprimer-album" class="bouton danger">Supprimer l'album</button>
+    </div>
+  </details>
+
+  <div id="grille" class="grille"></div>
+  <div id="vide-album" class="vide" hidden>
+    <p>Cet album est vide.</p>
+    <p>Utilisez « Ajouter des photos » pour y ranger des photos existantes ou en envoyer de nouvelles.</p>
+  </div>
+</div>
+
+<!-- Fenêtre d'ajout de photos -->
+<dialog id="ajout" class="fenetre" aria-label="Ajouter des photos">
+  <div class="titre-fenetre">
+    <h2>Ajouter des photos</h2>
+    <button id="btn-fermer-ajout" class="bouton discret">Fermer</button>
+  </div>
+
+  <label id="depot-album" class="depot">
+    <input id="fichiers-album" class="cache-visuel" type="file" accept="image/*,.heic,.heif" multiple>
+    <strong>Envoyer de nouvelles photos</strong>
+    <span>Glissez des fichiers ici ou cliquez : ils sont ajoutés à vos photos et à cet album</span>
+  </label>
+  <p id="msg-ajout" class="msg" role="status"></p>
+
+  <h2 class="sous-titre">Ou choisir parmi vos photos</h2>
+  <div id="grille-ajout" class="grille"></div>
+  <p id="vide-ajout" class="muted" hidden>Toutes vos photos sont déjà dans cet album.</p>
+
+  <div class="pied-fenetre">
+    <button id="btn-valider-ajout" class="bouton" disabled>Ajouter</button>
+  </div>
+</dialog>
+
+<script type="module" src="/static/js/album.js"></script>
+</body>
+</html>

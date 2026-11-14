@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photos : mes photos</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="page">
+  <header id="entete" class="entete"></header>
+
+  <div class="titre-page">
+    <h1>Mes photos</h1>
+    <div class="ligne">
+      <button id="btn-doublons" class="bouton secondaire" aria-expanded="false">Afficher les doublons</button>
+      <button id="btn-selectionner" class="bouton secondaire" aria-pressed="false">Sélectionner</button>
+    </div>
+  </div>
+
+  <!-- Zone de dépôt : on peut glisser des fichiers dessus ou cliquer pour les choisir -->
+  <label id="depot" class="depot">
+    <input id="fichiers" class="cache-visuel" type="file" accept="image/*,.heic,.heif" multiple>
+    <strong>Déposez vos photos ici</strong>
+    <span>ou cliquez pour choisir des fichiers (jpg, png, webp, gif, heic, 10 Mo maximum chacun)</span>
+  </label>
+  <p id="msg-envoi" class="msg" role="status"></p>
+
+  <!-- Résultat d'une comparaison -->
+  <section id="resultat" class="panneau resultat" hidden></section>
+
+  <!-- Photos identiques, groupées, avec suppression des copies -->
+  <section id="doublons" class="panneau" hidden></section>
+
+  <div id="grille" class="grille"></div>
+  <div id="vide-photos" class="vide" hidden>
+    <p>Aucune photo pour l'instant.</p>
+    <p>Déposez des fichiers dans le cadre ci-dessus pour commencer.</p>
+  </div>
+</div>
+
+<!-- Barre qui apparaît dès qu'une photo est cochée -->
+<div id="barre-selection" class="barre-selection" hidden>
+  <span id="compte-selection"></span>
+  <button id="btn-comparer" class="bouton" disabled>Comparer</button>
+  <select id="choix-album" aria-label="Album de destination"></select>
+  <button id="btn-ranger" class="bouton" disabled>Ranger</button>
+  <button id="btn-annuler" class="bouton discret">Tout décocher</button>
+</div>
+
+<script type="module" src="/static/js/galerie.js"></script>
+</body>
+</html>

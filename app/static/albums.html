@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photos : albums</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="page">
+  <header id="entete" class="entete"></header>
+
+  <div class="titre-page">
+    <h1>Albums</h1>
+  </div>
+
+  <form id="form-album" class="panneau formulaire-album">
+    <input id="nom-album" type="text" placeholder="Nom du nouvel album" maxlength="100" required aria-label="Nom de l'album">
+    <label class="interrupteur">
+      <input id="album-partage" type="checkbox">
+      <span class="piste"></span>
+      Partagé
+    </label>
+    <button type="submit" class="bouton">Créer l'album</button>
+  </form>
+  <p id="msg-albums" class="msg" role="status"></p>
+
+  <div id="albums" class="albums"></div>
+  <div id="vide-albums" class="vide" hidden>
+    <p>Aucun album pour l'instant.</p>
+    <p>Créez-en un ci-dessus, privé ou partagé, puis rangez-y des photos depuis « Mes photos ».</p>
+  </div>
+</div>
+<script type="module" src="/static/js/albums.js"></script>
+</body>
+</html>

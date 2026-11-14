@@ -31,6 +31,11 @@ spec:
             secretKeyRef:
               name: photos-s1-app
               key: uri
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: photo-secret     # Secret créé à la main dans chaque namespace
+              key: SECRET_KEY
         resources:
           requests:
             cpu: 50m
