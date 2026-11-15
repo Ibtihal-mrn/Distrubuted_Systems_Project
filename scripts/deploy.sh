@@ -2,12 +2,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-ENV="${1:?Usage: deploy.sh <test|prod|dev> <tag>}"
+ENV="${1:?Usage: deploy.sh <test|prod> <tag>}"
 TAG="${2:?Please provide a tag for the deployment.}"
 
 case "$ENV" in
-  test|prod|dev) ;;
-  *) echo "Environnement inconnu : $ENV (attendu : test ou prod ou dev)"; exit 1 ;;
+  test|prod) ;;
+  *) echo "Environnement inconnu : $ENV (attendu : test ou prod)"; exit 1 ;;
 esac
 
 # Construit l'image seulement si elle n'existe pas encore (en prod, c'est celle de test)
@@ -20,6 +20,13 @@ kind load docker-image photo-service:"$TAG" --name photo
 
 # Écrit le tag dans l'overlay : Deployment ET Job utiliseront cette image
 (cd k8s/overlays/"$ENV" && kustomize edit set image photo-service:"$TAG")
+
+# 0. Crée le namespace et les bases AVANT la migration.
+#    Le Job lit les Secrets créés par l'opérateur avec les bases : sans cette étape,
+#    il ne pourrait pas démarrer dans un environnement neuf.
+kubectl apply -f ./k8s/overlays/"$ENV"/namespace.yaml --context kind-photo
+kubectl apply -k ./k8s/overlays/"$ENV" -l component=database --context kind-photo
+kubectl wait --for=condition=Ready cluster/photos-s0 cluster/photos-s1 -n "$ENV" --timeout=300s --context kind-photo
 
 # 1. Supprime l'ancien Job : Kubernetes interdit de modifier un Job existant
 #    (son image change à chaque déploiement). --ignore-not-found = pas d'erreur s'il n'existe pas.
@@ -37,3 +44,4 @@ fi
 # 3. Migration réussie : applique tout le reste et attend le rollout
 kubectl apply -k ./k8s/overlays/"$ENV" --context kind-photo
 kubectl rollout status deployment/photo-service -n "$ENV" --timeout=120s --context kind-photo
+kubectl rollout status deployment/varnish -n "$ENV" --timeout=120s --context kind-photo
