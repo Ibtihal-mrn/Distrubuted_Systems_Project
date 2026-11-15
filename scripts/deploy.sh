@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
-set -euo pipefail
-cd "$(dirname "$0")/.."
+set -euo pipefail # s'arrête à la première erreur
+cd "$(dirname "$0")/.." # on se place à la racine du dépot car le script se lance de là
 
-ENV="${1:?Usage: deploy.sh <test|prod> <tag>}"
-TAG="${2:?Please provide a tag for the deployment.}"
+ENV="${1:?Usage: deploy.sh <test|prod|dev> <tag>}" # argument 1 : l'environnement
+TAG="${2:?Please provide a tag for the deployment.}" # argument 2 : la tag du commit
 
+# Vérifier que l'environnement est connu 
 case "$ENV" in
   test|prod) ;;
   *) echo "Environnement inconnu : $ENV (attendu : test ou prod)"; exit 1 ;;
 esac
 
 # Construit l'image seulement si elle n'existe pas encore (en prod, c'est celle de test)
-if docker image inspect photo-service:"$TAG" >/dev/null 2>&1; then
+if docker image inspect photo-service:"$TAG" >/dev/null 2>&1; then # échoue si l'image n'existe pas 
   echo "Image photo-service:$TAG déjà présente, pas de reconstruction."
 else
-  docker build --build-arg APP_VERSION="$TAG" -t photo-service:"$TAG" ./app
+  docker build --build-arg APP_VERSION="$TAG" -t photo-service:"$TAG" ./app # reconstruction de l'image à partir du dossier ./app
 fi
-kind load docker-image photo-service:"$TAG" --name photo
+kind load docker-image photo-service:"$TAG" --name photo # copie de l'image dans le node du cluster kind
 
 # Écrit le tag dans l'overlay : Deployment ET Job utiliseront cette image
 (cd k8s/overlays/"$ENV" && kustomize edit set image photo-service:"$TAG")

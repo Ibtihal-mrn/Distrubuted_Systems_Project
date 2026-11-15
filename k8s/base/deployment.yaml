@@ -1,55 +1,55 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: apps/v1                  # famille d'API Kubernetes de ce type d'objet
+kind: Deployment                     # le type : « maintiens N pods de cette image »
 metadata:
-  name: photo-service
+  name: photo-service                # nom de l'objet (utilisé par kubectl rollout status)
 spec:
-  strategy:
-    type: RollingUpdate
+  strategy:                          # COMMENT remplacer les pods lors d'une mise à jour
+    type: RollingUpdate              # progressivement, pas tous d'un coup
     rollingUpdate:
-      maxSurge: 2
-      maxUnavailable: 0
+      maxSurge: 2                    # on peut avoir jusqu'à 2 pods EN PLUS du nombre voulu pendant la mise à jour
+      maxUnavailable: 0              # on ne peut jamais avoir moins de pods prêts que voulu → zéro coupure
   selector:
     matchLabels:
-      app: photo-service
-  template:
+      app: photo-service             # « les pods que je gère sont ceux qui portent cette étiquette »
+  template:                          # le MODÈLE des pods à créer
     metadata:
       labels:
-        app: photo-service
+        app: photo-service           # étiquette posée sur chaque pod (doit correspondre au selector ci-dessus)
     spec:
       containers:
       - name: photo-service
-        image: photo-service:v1
-        imagePullPolicy: IfNotPresent
-        env:
-        - name: SHARD0_DSN
+        image: photo-service:v1      # image ; Kustomize remplace v1 par le tag du commit
+        imagePullPolicy: IfNotPresent   # n'essaie pas de télécharger l'image si elle est déjà dans le node (kind load l'y a mise)
+        env:                         # variables d'environnement données au conteneur
+        - name: SHARD0_DSN           # adresse de connexion à la base du shard 0...
           valueFrom:
-            secretKeyRef:
-              name: photos-s0-app   # Secret créé automatiquement par CloudNativePG
-              key: uri              # clé qui contient postgresql://user:mdp@photos-s0-rw:5432/photos
-        - name: SHARD1_DSN
+            secretKeyRef:            # ...lue dans un Secret Kubernetes (jamais écrite en clair dans le YAML)
+              name: photos-s0-app    # Secret créé automatiquement par CloudNativePG
+              key: uri               # clé contenant postgresql://utilisateur:mdp@photos-s0-rw:5432/photos
+        - name: SHARD1_DSN           # idem pour le shard 1
           valueFrom:
             secretKeyRef:
               name: photos-s1-app
               key: uri
-        - name: SECRET_KEY
+        - name: SECRET_KEY           # clé qui signe le cookie de connexion (identique sur tous les pods)
           valueFrom:
             secretKeyRef:
               name: photo-secret     # Secret créé à la main dans chaque namespace
               key: SECRET_KEY
         resources:
-          requests:
-            cpu: 50m
+          requests:                  # ce qui est RÉSERVÉ pour le pod (sert à choisir un node et au calcul de l'HPA)
+            cpu: 50m                 # 50 millicores = 5 % d'un cœur
             memory: 64Mi
-          limits:
-            cpu: 200m
-            memory: 128Mi
+          limits:                    # le MAXIMUM autorisé
+            cpu: 200m                # au-delà, le pod est ralenti (bridé)
+            memory: 128Mi            # au-delà, le pod est tué (OOMKilled) puis redémarré
         ports:
-          - containerPort: 8080
-        readinessProbe:
+          - containerPort: 8080      # le port d'écoute de l'app (documente ; le Service vise ce port)
+        readinessProbe:              # « ce pod est-il prêt à recevoir du trafic ? »
           httpGet:
-            path: /health
-            port: 8080
+            path: /health            # Kubernetes appelle cette route régulièrement
+            port: 8080               # s'il reçoit un succès, le pod entre dans le Service ; sinon il en est retiré
         lifecycle:
-          preStop:
+          preStop:                   # exécuté AVANT l'arrêt d'un pod (par exemple pendant un rolling update)
             exec:
-              command: ["sleep", "10"]
+              command: ["sleep", "10"]   # attend 10 s : laisse le temps de le retirer des routes avant qu'il ne s'arrête

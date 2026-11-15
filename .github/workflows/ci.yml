@@ -8,7 +8,7 @@ jobs:
   test:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4 # redémarre dans un dossier vide et télécharge le dépot au commit qui a déclenché
       - run: python3 -m venv .venv
       - run: .venv/bin/pip install -r requirements-dev.txt
       - run: .venv/bin/python -m pytest
@@ -18,7 +18,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - run: ./scripts/deploy.sh test "${GITHUB_SHA::7}"
+      - run: ./scripts/deploy.sh test "${GITHUB_SHA::7}" 
 
   smoke-test:
     needs: deploy-test
