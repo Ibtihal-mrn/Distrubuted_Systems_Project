@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: team2-routes
+  namespace: team2
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: infra
+  hostnames:
+    - team2.laboinfo-ecam.be
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: photo-service
+          port: 8080

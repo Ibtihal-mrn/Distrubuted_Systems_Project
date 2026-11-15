@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: photo-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: photo-service
+  template:
+    metadata:
+      labels:
+        app: photo-service
+    spec:
+      initContainers:
+      - name: migrate
+        image: ghcr.io/ayoub21061/photo-service:ovh-1
+        command: ["python", "migrate.py"]
+        envFrom:
+        - secretRef:
+            name: app-dsn
+        resources:
+          requests:
+            memory: "16Mi"
+            cpu: "10m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+      containers:
+      - name: photo-service
+        image: ghcr.io/ayoub21061/photo-service:ovh-1
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - secretRef:
+            name: app-dsn
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+        resources:
+          requests:
+            memory: "16Mi"
+            cpu: "10m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
