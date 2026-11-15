@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Service 
+metadata:
+  name: db-s1
+spec:
+  selector:
+    app: db-s1
+  ports:
+  - protocol: TCP
+    port: 5432
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db-s1
+spec:
+  serviceName: db-s1
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-s1
+  template:
+    metadata:
+      labels:
+        app: db-s1
+    spec:
+      containers:
+      - name: db
+        image: postgres:16
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-s1-credentials
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          value: photos
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "postgres"]
+        resources:
+          requests:
+            memory: "16Mi"
+            cpu: "10m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+  volumeClaimTemplates:
+  - metadata: 
+      name: data
+    spec: 
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 2Gi
+         
+
+
+
+
+
+
+
+
