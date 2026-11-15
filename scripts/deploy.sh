@@ -7,7 +7,7 @@ TAG="${2:?Please provide a tag for the deployment.}" # argument 2 : la tag du co
 
 # Vérifier que l'environnement est connu 
 case "$ENV" in
-  test|prod) ;;
+  test|prod|dev) ;;
   *) echo "Environnement inconnu : $ENV (attendu : test ou prod)"; exit 1 ;;
 esac
 
