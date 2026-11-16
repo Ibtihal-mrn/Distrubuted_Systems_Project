@@ -121,3 +121,4 @@ le déploiement en production part automatiquement après le smoke-test.
 | `no matches for kind "Cluster"` dans `deploy.sh` | l'opérateur n'est pas installé sur le cluster du runner | `kubectl apply --server-side -k k8s/platform/cnpg` |
 | migration en échec | base pas prête, ou SQL invalide | `kubectl logs job/photo-migrate -n <env>` |
 | `deploy-prod` ne démarre pas | validation en attente (si configurée) | approuver dans l'onglet Actions |
+| pods de l'application en `CreateContainerConfigError` | le Secret `photo-secret` n'existe pas dans ce namespace | le créer (voir `01-cluster.md`, section 6), les pods redémarrent seuls |

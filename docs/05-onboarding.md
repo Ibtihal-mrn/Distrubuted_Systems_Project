@@ -51,9 +51,13 @@ Le principe Kustomize : `base/` décrit ce qui est commun, chaque **overlay** d�
 4. **Créer le cluster et installer la plateforme** : `docs/01-cluster.md`, sections 3 à 5 (cluster, contrôleur Ingress, metrics-server, Headlamp, opérateur de base de données).
 5. **Déployer l'environnement de test** :
    ```bash
+   kubectl --context kind-photo apply -f k8s/overlays/test/namespace.yaml
+   kubectl --context kind-photo create secret generic photo-secret -n test \
+     --from-literal=SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
    ./scripts/deploy.sh test local1
    git checkout k8s/overlays/test/kustomization.yaml     # le script change le tag d'image : ne pas le commiter
    ```
+   Le Secret `photo-secret` (clé de signature des sessions) doit exister dans chaque namespace avant le déploiement : aucun script ne le crée.
 6. **Essayer** :
    ```bash
    curl -s http://test.photo.localhost/health                                  # ok
