@@ -13,6 +13,7 @@ flowchart LR
   S1 --> V{{"validation manuelle : environnement production"}}
   V --> D2[deploy-prod : scripts/deploy.sh prod]
   D2 --> S2[smoke-test : /health de prod]
+  S2 --> D3[deploy-ovh : scripts/deploy-ovh.sh prod]
 ```
 
 Chaque étape dépend de la précédente (`needs`) : si l'une échoue, les suivantes ne s'exécutent pas.
@@ -23,7 +24,6 @@ Chaque étape dépend de la précédente (`needs`) : si l'une échoue, les suiva
 |---|---|
 | Déclencheur | `push` sur `main` uniquement |
 | Exécuteur | **runner auto-hébergé** (`runs-on: self-hosted`), installé sur le Mac qui héberge aussi le cluster kind |
-| Pourquoi | les déploiements visent un cluster local : un runner hébergé par GitHub n'y aurait pas accès |
 
 Conséquences à connaître :
 
@@ -39,6 +39,7 @@ Conséquences à connaître :
 | `deploy-test` | déploie le commit dans `test` | `./scripts/deploy.sh test "${GITHUB_SHA::7}"` |
 | `smoke-test` | vérifie que `test` répond | `./scripts/smoke-test.sh test` |
 | `deploy-prod` | déploie le **même** commit en `prod`, après validation | `./scripts/deploy.sh prod "${GITHUB_SHA::7}"` puis `./scripts/smoke-test.sh prod` |
+| `deploy-ovh` | déploie sur le cluster ovh après déploiement en local | `./scripts/deploy-ovh.sh prod ` |
 
 Les tests sont dans `tests/` (`test_app.py` : routes de base ; `test_photos.py` : envoi, lecture, suppression, doublons, comparaison, routage
 par shard, comportement quand la base est indisponible, en-têtes de cache). 
@@ -47,8 +48,6 @@ par shard, comportement quand la base est indisponible, en-têtes de cache).
 
 - **Tag = 7 premiers caractères du SHA du commit** (`${GITHUB_SHA::7}`) : un tag unique par commit. Kubernetes ne relance des pods que
   si le modèle de pod change : un tag identique d'un déploiement à l'autre ne provoquerait aucun rollout.
-- Le tag est aussi passé à l'image (`--build-arg APP_VERSION`) : la route `/version` renvoie ce `version` (avec le nom du pod), ce qui permet de voir quelle version
-  répond pendant un déploiement.
 - **On construit une fois, on déploie plusieurs fois** : `deploy.sh` ne reconstruit l'image que si elle n'existe pas déjà. En `prod`, c'est donc
   **exactement l'image testée** en `test`.
 
@@ -64,8 +63,6 @@ par shard, comportement quand la base est indisponible, en-têtes de cache).
 | 2. Migration | applique **seulement** le Job (`-l component=migration`) et attend sa fin (180 s) ; en cas d'échec, affiche les journaux et **arrête tout** | l'ancienne version continue de servir ; le déploiement n'a pas lieu |
 | 3. Déploiement | applique tout l'overlay, puis attend le rollout de l'application et du cache | la pipeline n'est verte que si toute la chaîne est prête |
 
-Les sélections par label (`-l component=...`) permettent d'appliquer une partie seulement d'un overlay Kustomize.
-
 ## 6. Déploiement sans interruption
 
 | Mécanisme | Fichier | Effet |
@@ -76,19 +73,8 @@ Les sélections par label (`-l component=...`) permettent d'appliquer une partie
 | Migrations compatibles avec l'ancienne version | `app/migrations/` | les deux versions tournent en même temps sur la même base |
 | `/health` volontairement sans accès aux bases | `app/app.py` | une panne de base ne rend pas tous les pods « non prêts » |
 
-Mesure : `./scripts/watch.sh <test|prod>` envoie une requête toutes les 0,2 s et compte les erreurs (bilan à `Ctrl+C`).
 
-## 7. Scénarios d'échec
-
-| Scénario | Ce que fait la pipeline |
-|---|---|
-| tests unitaires qui échouent | `test` est rouge ; `deploy-test` n'est pas lancé |
-| image défectueuse (le pod ne devient jamais prêt) | `rollout status` expire (120 s), la pipeline est rouge ; les anciens pods servent toujours (`maxUnavailable: 0`) |
-| migration en échec | la pipeline est rouge **avant** le rollout ; les journaux du Job sont affichés ; l'ancienne version continue de servir |
-| `smoke-test` de `test` en échec | `prod` n'est pas déployé |
-| échec en `prod` | l'ancienne version continue de servir ; retour arrière manuel possible : `kubectl rollout undo deployment/photo-service -n prod` |
-
-## 8. Validation avant la production
+## 7. Validation avant la production
 
 Le job `deploy-prod` déclare `environment: production`. Pour qu'il attende une **validation manuelle**, des relecteurs doivent être
 configurés dans *Settings*, *Environments*, *production*, *Required reviewers*. **À vérifier dans le dépôt** : sans cette configuration,
@@ -98,4 +84,3 @@ le déploiement en production part automatiquement après le smoke-test.
 
 - Aucun secret n'est stocké dans le dépôt : les mots de passe des bases sont créés dans des Secrets Kubernetes, lus par les pods.
 - Les fichiers d'identifiants (kubeconfig d'un cluster distant) se trouvent dans `secrets/`, **ignoré par Git**.
-- Pour un cluster distant, le kubeconfig serait un **secret GitHub Actions** (voir `01-cluster.md`, section 9).

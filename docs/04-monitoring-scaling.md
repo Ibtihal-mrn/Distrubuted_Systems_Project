@@ -1,7 +1,5 @@
 # Monitoring et scaling
 
-> Partie A (monitoring) : metrics-server, Headlamp, accès et droits. Partie B (scaling) : requests/limits, HPA, scaling manuel.
-> La partie B est rédigée à partir des fichiers du dépôt. Le test de charge (B5) se lance avec `scripts/loadtest.sh`.
 
 # Partie A. Monitoring
 
@@ -103,25 +101,6 @@ kubectl --context kind-photo auth can-i patch deployments --subresource=scale -n
 ```bash
 kubectl --context kind-photo create token headlamp-operator -n kube-system --duration=1h
 ```
-
-Dans l'interface, ce compte peut **voir** les ressources et leur YAML et **changer le nombre de replicas** ; modifier le YAML ou supprimer un
-pod est refusé (`Forbidden`, le message nomme le compte, le verbe et la ressource). Le compte administrateur temporaire utilisé à l'installation a été supprimé.
-
-## A5. Démonstration
-
-1. `kubectl --context kind-photo top pods -n test` : la charge actuelle de chaque pod.
-2. Ouvrir `http://headlamp.localhost`, se connecter avec le token.
-3. Observer les pods de `test` avec leur CPU et leur mémoire.
-4. Changer le nombre de replicas de `photo-service` depuis l'interface, et voir les pods apparaître.
-5. Tenter de supprimer un pod : refus (moindre privilège).
-
-## A6. Limites
-
-- metrics-server : pas d'historique ni d'alertes. Pour une vraie supervision : **Prometheus** (collecte et stockage de séries de mesures) et **Grafana** (graphiques).
-- Le port 80 du nœud kind est publié sur **toutes les interfaces** de la machine : le tableau de bord est joignable depuis le réseau local. Pour le limiter, il faudrait
-  `listenAddress: "127.0.0.1"` dans `kind-config.yaml` (et recréer le cluster).
-- `--kubelet-insecure-tls` : acceptable uniquement en local.
-- Un token est valable pour la durée demandée : il se recrée à la demande.
 
 # Partie B. Scaling
 

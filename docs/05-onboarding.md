@@ -37,7 +37,7 @@ Le principe Kustomize : `base/` décrit ce qui est commun, chaque **overlay** d�
 ## 3. Installation pas à pas
 
 1. **Outils** : Docker Desktop (au moins 6 Gio de mémoire), `kind`, `kubectl`, `kustomize`, `git`, `python3`.
-2. **Cloner** le dépôt **hors d'un dossier synchronisé** (iCloud, Dropbox) : la synchronisation corrompt les fichiers internes de Git (erreurs `mmap failed`).
+2. **Cloner** le dépôt .
    ```bash
    git clone https://github.com/ibtihal-mrn/Distrubuted_Systems_Project.git ~/dev/Distrubuted_Systems_Project
    cd ~/dev/Distrubuted_Systems_Project
@@ -68,17 +68,8 @@ Le principe Kustomize : `base/` décrit ce qui est commun, chaque **overlay** d�
    L'interface web : `http://test.photo.localhost/ui`.
 7. **Tableau de bord** : `http://headlamp.localhost`, avec un token (`kubectl --context kind-photo create token headlamp-operator -n kube-system --duration=1h`).
 
-## 4. Travailler à deux sur le code
 
-- **Une branche par tâche**, créée depuis `main` à jour : `git fetch origin` puis `git switch -c <ma-branche> origin/main`.
-- **Une pull request relue par l'autre personne** avant fusion.
-- **`main` déclenche la pipeline** : une fusion sur `main` déploie en `test`, puis en `prod` après validation. Ne fusionnez que ce qui est prêt, et prévenez avant une
-  fusion qui nécessite une installation préalable sur le cluster du runner (par exemple l'opérateur de base de données).
-- **Jamais de secret dans le dépôt** : mots de passe, tokens, kubeconfig. Le dossier `secrets/` et les fichiers `.env*` sont ignorés ; vérifiez avec `git status`
-  avant chaque commit (et `git check-ignore -v secrets/` si un doute subsiste).
-- Un script ou une commande qui modifie un fichier suivi par Git (le tag d'image dans un overlay) : ne commitez pas ce changement.
-
-## 5. Commandes utiles
+## 4. Commandes utiles
 
 | Besoin | Commande |
 |---|---|
@@ -92,7 +83,7 @@ Le principe Kustomize : `base/` décrit ce qui est commun, chaque **overlay** d�
 | Mesurer un déploiement | `./scripts/watch.sh test` pendant un déploiement |
 | Démontrer le sharding | `./scripts/shard-demo.sh` |
 
-## 6. Pièges rencontrés (et comment les éviter)
+## 5. Pièges rencontrés (et comment les éviter)
 
 | Piège | Explication | À faire |
 |---|---|---|
@@ -108,7 +99,7 @@ Le principe Kustomize : `base/` décrit ce qui est commun, chaque **overlay** d�
 | Erreurs `mmap failed` de Git | dossier synchronisé par iCloud | travailler dans `~/dev` |
 | Le runner ne prend aucun job | runner hors ligne | l'allumer ; Docker lancé ; veille désactivée |
 
-## 7. Scénario de démonstration complet
+## 6. Scénario de démonstration complet
 
 1. **Pipeline** : un `git push` sur `main`, puis suivre l'onglet *Actions* (test, déploiement en test, smoke-test, validation, production).
 2. **Zéro interruption** : `./scripts/watch.sh prod` pendant le déploiement : aucune requête en erreur ; la version affichée change.
