@@ -1,4 +1,5 @@
 FROM python:3.12-slim 
+LABEL org.opencontainers.image.source="https://github.com/ibtihal-mrn/Distrubuted_Systems_Project"
 WORKDIR /app 
 COPY requirements.txt .
 RUN pip install -r requirements.txt

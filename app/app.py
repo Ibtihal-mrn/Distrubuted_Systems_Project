@@ -80,7 +80,7 @@ def utilisateur_courant():
 
 def connexion_requise(vue):
     """Décorateur : répond 401 si personne n'est connecté, sinon exécute la route."""
-    @functools.wraps(vue)
+    @functools.wraps(vue) # flask identifie chaque route par le nom de sa fonction
     def enveloppe(*args, **kwargs):
         if utilisateur_courant() is None:
             return erreur("connexion requise", 401)
@@ -112,18 +112,20 @@ def album_vers_json(album):
     }
 
 
-@app.after_request
+@app.after_request # exécuter après chaque route sur la réponse 
 def entetes_cache(reponse):
     """Par défaut, rien ne doit être mis en cache (Varnish ou navigateur).
 
     Les routes qui peuvent l'être (le contenu d'une photo) définissent
     leur propre en-tête, que setdefault ne remplace pas.
+
+    Presque toutes les réponses dépendent de l'utilisateur connecté donc si on met ça en cache, on peut accéder aux données d'un autre user
     """
     reponse.headers.setdefault("Cache-Control", "no-store")
     return reponse
 
 
-@app.errorhandler(psycopg.OperationalError)
+@app.errorhandler(psycopg.OperationalError) # si une base ne répond pas
 def base_indisponible(_erreur):
     """Si une base ne répond pas : 503 (service indisponible), pas un plantage."""
     return erreur("base de données indisponible", 503)
@@ -136,7 +138,7 @@ def fichier_trop_gros(_erreur):
 
 #  Pages et sondes 
 
-@app.route("/")
+
 @app.route("/")
 def page_connexion():
     """Première page de l'application : connexion et création de compte."""
@@ -165,8 +167,8 @@ def page_album():
 def version():
     """Ancien contenu de "/" : pod et version, utilisé par watch.sh pendant un déploiement."""
     return jsonify(message="Hello to this photo-storage app",
-                   pod=socket.gethostname(),
-                   version=os.environ.get("APP_VERSION", "dev"))
+                   pod=socket.gethostname(), # nom du pod qui répond
+                   version=os.environ.get("APP_VERSION", "dev")) # tag de l'image
 
 
 @app.route("/health")
@@ -177,7 +179,7 @@ def health():
 
 #  Comptes 
 
-@app.route("/register", methods=["POST"])
+@app.route("/register", methods=["POST"]) # POST donc on envoie des données
 def inscription():
     """Crée un compte et connecte l'utilisateur. Corps JSON : {"email", "mot_de_passe"}."""
     donnees = corps_json()
