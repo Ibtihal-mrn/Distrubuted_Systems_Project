@@ -12,29 +12,26 @@ import psycopg   # pilote PostgreSQL
 
 # Variables d'environnement qui contiennent l'adresse de chaque shard.
 # L'indice dans la liste = le numéro du shard (0 ou 1).
-SHARD_VARS = ["SHARD0_DSN", "SHARD1_DSN"]
+SHARD_VARS = ["SHARD0_DSN", "SHARD1_DSN"] # noms des variables d'environnement qui contiennent l'adresse de chaque base
 N_SHARDS = len(SHARD_VARS)   # = 2
 
 
-def sha256_hex(contenu):
-    """Empreinte SHA-256 d'une suite d'octets, en 64 caractères hexadécimaux."""
-    return hashlib.sha256(contenu).hexdigest()
+def sha256_hex(contenu): # Va permettre de choisir le shard et détecter les doublons
+    return hashlib.sha256(contenu).hexdigest() # Empreinte SHA-256 d'une suite d'octets, en 64 caractères hexadécimaux.
 
 
-def shard_for(empreinte):
-    """Numéro du shard (0 ou 1) pour une empreinte SHA-256 en hexadécimal."""
+def shard_for(empreinte): # Choix du shard en fonction de l'empreinte SHA-256 en hexadécimal.
     # Même formule que scripts/shard-demo.sh : les deux doivent toujours router pareil.
     # Le routage ne dépend PAS de l'utilisateur : le même fichier va toujours au même shard.
+    # int(..., 16) : convertit les 8 premiers caractères hexadécimaux en nombre ; % N_SHARDS : reste de la division par 2 → 0 ou 1
     return int(empreinte[:8], 16) % N_SHARDS
 
 
 def connect(shard):
-    """Ouvre une connexion vers le shard demandé (0 ou 1)."""
-    return psycopg.connect(os.environ[SHARD_VARS[shard]])
+    return psycopg.connect(os.environ[SHARD_VARS[shard]]) # Ouvre une connexion vers le shard demandé (0 ou 1).
 
 
-def _ligne_vers_info(ligne, shard):
-    """Transforme une ligne SQL (id, nom, sha256, type_mime, taille, date_ajout, user_id) en dict."""
+def _ligne_vers_info(ligne, shard): # Transforme une ligne SQL (id, nom, sha256, type_mime, taille, date_ajout, user_id) en dict.
     return {
         "id": str(ligne[0]),
         "nom": ligne[1],
@@ -52,12 +49,10 @@ def _ligne_vers_info(ligne, shard):
 _COLONNES_INFO = "id, nom, sha256, type_mime, taille, date_ajout, user_id"
 
 
-def add_photo(nom, type_mime, contenu, user_id):
-    """Enregistre une photo de user_id dans le bon shard.
+def add_photo(nom, type_mime, contenu, user_id): #Enregistre une photo de user_id dans le bon shard. 
+                                                #Renvoie un dictionnaire décrivant la photo, avec la liste des photos DE CET
+                                                #UTILISATEUR qui ont exactement le même contenu (doublons).                                           
 
-    Renvoie un dictionnaire décrivant la photo, avec la liste des photos DE CET
-    UTILISATEUR qui ont exactement le même contenu (doublons).
-    """
     empreinte = sha256_hex(contenu)    # empreinte du contenu
     shard = shard_for(empreinte)       # shard choisi à partir de l'empreinte
 
@@ -67,11 +62,12 @@ def add_photo(nom, type_mime, contenu, user_id):
             # l'empreinte seule : on révélerait l'existence (id, nom) des photos
             # privées d'un autre utilisateur.
             cur.execute(
-                "SELECT id, nom FROM photos WHERE sha256 = %s AND user_id = %s",
+                "SELECT id, nom FROM photos WHERE sha256 = %s AND user_id = %s", # sans AND user_id =%s, on révèle une photo identique d'un autre user
                 (empreinte, user_id),
             )
             doublons = [{"id": str(ligne[0]), "nom": ligne[1]} for ligne in cur.fetchall()]
 
+            # insérer la photos 
             cur.execute(
                 "INSERT INTO photos (nom, sha256, contenu, type_mime, taille, user_id)"
                 " VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, date_ajout",
@@ -92,8 +88,7 @@ def add_photo(nom, type_mime, contenu, user_id):
     }
 
 
-def list_photos(user_id):
-    """Liste les photos DE user_id (sans leur contenu), les plus récentes d'abord."""
+def list_photos(user_id): # Liste les photos DE user_id (sans leur contenu), les plus récentes d'abord.
     resultat = []
     # On ne sait pas où sont les photos : on interroge les deux shards.
     for shard in range(N_SHARDS):
@@ -102,12 +97,12 @@ def list_photos(user_id):
                 # WHERE user_id = ... : seulement les photos de l'utilisateur.
                 # Les anciennes photos (user_id NULL) n'apparaissent donc chez personne.
                 cur.execute(
-                    f"SELECT {_COLONNES_INFO} FROM photos WHERE user_id = %s",
+                    f"SELECT {_COLONNES_INFO} FROM photos WHERE user_id = %s", # seulement les photos de ce user
                     (user_id,),
                 )
                 for ligne in cur.fetchall():
-                    resultat.append(_ligne_vers_info(ligne, shard))
-    resultat.sort(key=lambda photo: photo["date_ajout"], reverse=True)
+                    resultat.append(_ligne_vers_info(ligne, shard)) # transformer la ligne sql en dict
+    resultat.sort(key=lambda photo: photo["date_ajout"], reverse=True) # fusionne les deux listes, les plus récentes d'abord
     return resultat
 
 

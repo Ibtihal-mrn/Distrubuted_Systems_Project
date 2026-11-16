@@ -1,7 +1,5 @@
 # Monitoring et scaling
 
-> Partie A (monitoring) : metrics-server, Headlamp, accès et droits. Partie B (scaling) : requests/limits, HPA, scaling manuel.
-> La partie B est rédigée à partir des fichiers du dépôt ; les résultats du test de charge sont à compléter par l'auteure du scaling.
 
 # Partie A. Monitoring
 
@@ -28,8 +26,7 @@ Headlamp ne stocke rien : c'est un client de l'API Kubernetes. Il transmet **le 
 Fichier : `k8s/platform/metrics-server/kustomization.yaml`.
 
 - Référence le manifest officiel (version **0.9.0**) par son adresse et lui applique un **patch** qui ajoute `--kubelet-insecure-tls`
-  (les kubelets de kind n'ont pas de certificat signé par l'autorité du cluster ; **à ne pas faire en production**). Le manifest officiel n'est jamais
-  modifié : le changement est visible en trois lignes.
+  (les kubelets de kind n'ont pas de certificat signé par l'autorité du cluster ; **à ne pas faire en production**). 
 - Chemin d'une commande `kubectl top pods` : le client interroge l'API server, qui transmet les requêtes `metrics.k8s.io` au Service
   `metrics-server` (grâce à un objet `APIService`) ; metrics-server répond avec les dernières mesures qu'il garde **en mémoire** et qu'il relève
   auprès des kubelets (environ toutes les 15 secondes).
@@ -105,25 +102,6 @@ kubectl --context kind-photo auth can-i patch deployments --subresource=scale -n
 kubectl --context kind-photo create token headlamp-operator -n kube-system --duration=1h
 ```
 
-Dans l'interface, ce compte peut **voir** les ressources et leur YAML et **changer le nombre de replicas** ; modifier le YAML ou supprimer un
-pod est refusé (`Forbidden`, le message nomme le compte, le verbe et la ressource). Le compte administrateur temporaire utilisé à l'installation a été supprimé.
-
-## A5. Démonstration
-
-1. `kubectl --context kind-photo top pods -n test` : la charge actuelle de chaque pod.
-2. Ouvrir `http://headlamp.localhost`, se connecter avec le token.
-3. Observer les pods de `test` avec leur CPU et leur mémoire.
-4. Changer le nombre de replicas de `photo-service` depuis l'interface, et voir les pods apparaître.
-5. Tenter de supprimer un pod : refus (moindre privilège).
-
-## A6. Limites
-
-- metrics-server : pas d'historique ni d'alertes. Pour une vraie supervision : **Prometheus** (collecte et stockage de séries de mesures) et **Grafana** (graphiques).
-- Le port 80 du nœud kind est publié sur **toutes les interfaces** de la machine : le tableau de bord est joignable depuis le réseau local. Pour le limiter, il faudrait
-  `listenAddress: "127.0.0.1"` dans `kind-config.yaml` (et recréer le cluster).
-- `--kubelet-insecure-tls` : acceptable uniquement en local.
-- Un token est valable pour la durée demandée : il se recrée à la demande.
-
 # Partie B. Scaling
 
 ## B1. Réserver des ressources : requests et limits
@@ -157,12 +135,7 @@ kubectl --context kind-photo get hpa -n test -w
 kubectl --context kind-photo top pods -n test
 ```
 
-## B3. `replicas` absent du Deployment
-
-Quand un HPA pilote un Deployment, le champ `replicas` ne doit **pas** figurer dans le manifest : `kubectl apply` remet dans l'état du fichier chaque
-champ qui y est écrit. Avec `replicas: 3` dans le fichier, chaque déploiement de la pipeline annulerait un scaling manuel ou celui de l'HPA.
-
-## B4. Scaling manuel
+## B3. Scaling manuel
 
 Depuis Headlamp (action *Scale*, qui passe par la sous-ressource `scale`), ou en ligne de commande :
 
@@ -175,5 +148,29 @@ stabilisation). Pour une démonstration du scaling manuel, l'HPA a le dernier mo
 
 ## B5. Test de charge
 
-> À compléter par l'auteure du scaling : outil utilisé, durée, nombre de requêtes, évolution du nombre de pods observée (captures de
-> `kubectl get hpa -w` et de Headlamp), et temps de retour au minimum après l'arrêt de la charge.
+But : montrer que l'HPA **ajoute des pods quand la charge monte** et **en retire quand elle cesse**.
+
+### Outil et principe
+
+Le script `scripts/loadtest.sh` n'a besoin que de `curl`. Il lance plusieurs clients en parallèle qui envoient des requêtes en boucle à
+`http://<env>.photo.localhost/version`, pendant une durée donnée. Cette route est un bon choix : elle traverse tout le chemin
+(Ingress, Varnish, Service, pod) et Varnish **ne la met pas en cache** (il ne cache que `/static/`), donc chaque requête arrive jusqu'à un pod.
+
+Toutes les 10 secondes, le script relève l'état de l'HPA (pods actuels, pods voulus, CPU moyen en % de la demande). Quand la charge s'arrête, il continue
+d'observer jusqu'au retour au minimum, puis affiche le nombre de requêtes par code HTTP.
+
+```bash
+scripts/loadtest.sh test 180 40     # environnement, durée en secondes, clients en parallèle
+```
+
+Pour suivre la même chose dans l'interface : `kubectl --context kind-photo get pods -n test -w` dans un second terminal, et Headlamp dans le navigateur.
+
+### Ce qu'on doit observer
+
+| Phase | Ce que fait l'HPA |
+|---|---|
+| Avant la charge | 3 pods (minimum), CPU moyen très bas |
+| Charge | le CPU moyen dépasse 50 % de la demande (25 millicores par pod) : l'HPA calcule `pods voulus = ceil(pods actuels x CPU mesuré / 50 %)`, plafonné à 6, et **ajoute des pods rapidement** |
+| Après la charge | le CPU retombe, mais l'HPA attend la **fenêtre de stabilisation de 5 minutes** avant de retirer des pods : le retour à 3 se fait environ 5 minutes après l'arrêt |
+
+Exemple du calcul : avec 3 pods à 150 % de CPU, `ceil(3 x 150 / 50) = 9`, ramené au maximum de **6**.
