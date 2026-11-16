@@ -8,7 +8,7 @@ KUBECONFIG_FILE="${KUBECONFIG_FILE:?Chemin du kubeconfig requis}"   # fourni par
 NS="${NS:-team2}"
 
 # 1. image multi-architecture, publiée dans le registre
-docker buildx build --platform linux/amd64,linux/arm64 \
+docker buildx build --platform linux/amd64 \
   --build-arg APP_VERSION="$TAG" -t "$IMAGE:$TAG" --push ./app
 
 # 2. le tag dans l'overlay (même mécanisme que deploy.sh)
