@@ -84,8 +84,15 @@ Détails : `04-monitoring-scaling.md` (metrics-server, Headlamp) et `03-database
 ## 6. Premier déploiement d'un environnement
 
 ```bash
+kubectl --context kind-photo apply -f k8s/overlays/test/namespace.yaml
+kubectl --context kind-photo create secret generic photo-secret -n test \
+  --from-literal=SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
 ./scripts/deploy.sh test local1
 ```
+
+Le Secret `photo-secret` (clé `SECRET_KEY`) signe les cookies de session de l'application : il est lu par le Deployment et doit exister **dans chaque namespace**
+avant le déploiement, sinon les pods restent en `CreateContainerConfigError`. Il n'est créé par aucun script ni manifest (une valeur secrète ne se commite pas) :
+on le crée une fois par environnement, avec une valeur aléatoire, et on la garde hors du dépôt.
 
 Le script construit l'image, la charge dans kind, crée le namespace et les bases, applique la migration, puis déploie l'application et le
 cache (détails dans `02-ci-cd.md`). Puis :
