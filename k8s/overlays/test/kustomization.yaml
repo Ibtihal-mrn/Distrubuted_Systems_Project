@@ -1,28 +1,28 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-- ../../base/
-- ../../base/cache
-- ../../base/hpa
-- ../../base/db-cluster
-- ../../base/db-cluster-s1
-- namespace.yaml
-namespace: test
-patches:
-- patch: |-
+kind: Kustomization                  # fichier de configuration de Kustomize (PAS un objet Kubernetes)
+resources:                           # tout ce qui est assemblé pour cet environnement
+- ../../base/                        # le socle commun (listé dans base/kustomization.yaml)
+- ../../base/cache                   # Varnish
+- ../../base/hpa                     # l'HPA (absent de dev)
+- ../../base/db-cluster              # base du shard 0
+- ../../base/db-cluster-s1           # base du shard 1
+- namespace.yaml                     # l'objet Namespace « test » (créé aussi par deploy.sh, étape 0)
+namespace: test                      # ajoute « namespace: test » sur TOUS les objets assemblés
+patches:                             # modifications ciblées d'objets venant de la base
+- patch: |-                          # PATCH 1 : changer l'adresse de l'Ingress
+    - op: replace                    #   opération : remplacer une valeur
+      path: /spec/rules/0/host       #   chemin dans l'objet : spec → rules → premier élément (0) → host
+      value: test.photo.localhost    #   nouvelle valeur (base : photo.localhost)
+  target:                            #   sur quel objet ?
+    kind: Ingress
+    name: photo-service
+- patch: |-                          # PATCH 2 : envoyer le trafic vers Varnish au lieu de l'app
     - op: replace
-      path: /spec/rules/0/host
-      value: test.photo.localhost
+      path: /spec/rules/0/http/paths/0/backend/service/name   
+      value: varnish                 # (base : photo-service)
   target:
     kind: Ingress
     name: photo-service
-- patch: |-
-    - op: replace
-      path: /spec/rules/0/http/paths/0/backend/service/name
-      value: varnish
-  target:
-    kind: Ingress
-    name: photo-service
-images:
-- name: photo-service
-  newTag: local1
+images:                              # remplacement de tag d'image
+- name: photo-service                #   toute image nommée photo-service...
+  newTag: local1                     #   ...prend ce tag (réécrit à chaque déploiement par « kustomize edit set image »)

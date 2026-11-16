@@ -1,10 +1,8 @@
 # Pipeline CI/CD
 
-> Partie « Pipeline CI/CD ». Rédigée à partir du code du dépôt (`.github/workflows/ci.yml`, `scripts/`) ; à relire par l'auteure de la pipeline.
-
 ## 1. Vue d'ensemble
 
-Un `git push` sur la branche `main` déclenche une pipeline GitHub Actions qui teste le code, le déploie en `test`, vérifie que le
+Un `git push` sur la branche `main` déclenche un pipeline GitHub Actions qui teste le code, le déploie en `test`, vérifie que le
 déploiement répond, puis le déploie en `prod` **après validation**, sans interruption de service.
 
 ```mermaid
@@ -31,8 +29,6 @@ Conséquences à connaître :
 
 - **Le runner doit être en ligne** (Mac allumé, Docker lancé, application du runner démarrée, veille désactivée par exemple avec `caffeinate -d`).
   Sinon les jobs restent « en attente » sans erreur. L'état se lit dans *Settings*, *Actions*, *Runners* (`Idle` = prêt).
-- **Le dépôt est public** : la pipeline ne se déclenche **pas** sur `pull_request`. Avec un runner auto-hébergé, une pull request
-  venue d'un tiers pourrait faire exécuter du code sur la machine. Seul ce qui est fusionné sur `main` (donc relu) s'exécute.
 - Les déploiements vont dans le cluster **de la machine qui porte le runner**.
 
 ## 3. Les étapes (jobs)
@@ -45,13 +41,13 @@ Conséquences à connaître :
 | `deploy-prod` | déploie le **même** commit en `prod`, après validation | `./scripts/deploy.sh prod "${GITHUB_SHA::7}"` puis `./scripts/smoke-test.sh prod` |
 
 Les tests sont dans `tests/` (`test_app.py` : routes de base ; `test_photos.py` : envoi, lecture, suppression, doublons, comparaison, routage
-par shard, comportement quand la base est indisponible, en-têtes de cache). `pytest.ini` fixe `pythonpath = app` pour importer le code.
+par shard, comportement quand la base est indisponible, en-têtes de cache). 
 
 ## 4. Image et version
 
 - **Tag = 7 premiers caractères du SHA du commit** (`${GITHUB_SHA::7}`) : un tag unique par commit. Kubernetes ne relance des pods que
   si le modèle de pod change : un tag identique d'un déploiement à l'autre ne provoquerait aucun rollout.
-- Le tag est aussi passé à l'image (`--build-arg APP_VERSION`) : la route `/` renvoie ce `version`, ce qui permet de voir quelle version
+- Le tag est aussi passé à l'image (`--build-arg APP_VERSION`) : la route `/version` renvoie ce `version` (avec le nom du pod), ce qui permet de voir quelle version
   répond pendant un déploiement.
 - **On construit une fois, on déploie plusieurs fois** : `deploy.sh` ne reconstruit l'image que si elle n'existe pas déjà. En `prod`, c'est donc
   **exactement l'image testée** en `test`.
@@ -77,11 +73,10 @@ Les sélections par label (`-l component=...`) permettent d'appliquer une partie
 | `RollingUpdate` avec `maxSurge: 2`, `maxUnavailable: 0` | `k8s/base/deployment.yaml` | de nouveaux pods démarrent **avant** que les anciens soient arrêtés ; jamais moins de pods qu'avant |
 | `readinessProbe` sur `/health` | `deployment.yaml` | un pod ne reçoit du trafic que lorsqu'il répond |
 | `preStop: sleep 10` | `deployment.yaml` | l'ancien pod continue de répondre dix secondes pendant qu'on le retire des Services |
-| Migrations compatibles avec l'ancienne version | `app/migrations/` | les deux versions tournent en même temps sur la même base (voir `03-database.md`) |
+| Migrations compatibles avec l'ancienne version | `app/migrations/` | les deux versions tournent en même temps sur la même base |
 | `/health` volontairement sans accès aux bases | `app/app.py` | une panne de base ne rend pas tous les pods « non prêts » |
 
-Mesure : `./scripts/watch.sh <test|prod>` envoie une requête toutes les 0,2 s et compte les erreurs (bilan à `Ctrl+C`). Lors de la
-validation du milestone 2, 401 requêtes consécutives pendant un rollout ont toutes reçu `200`.
+Mesure : `./scripts/watch.sh <test|prod>` envoie une requête toutes les 0,2 s et compte les erreurs (bilan à `Ctrl+C`).
 
 ## 7. Scénarios d'échec
 
@@ -101,23 +96,6 @@ le déploiement en production part automatiquement après le smoke-test.
 
 ## 9. Secrets et sécurité
 
-- Aucun secret n'est stocké dans le dépôt : les mots de passe des bases sont créés par l'opérateur dans des Secrets Kubernetes, lus par les pods.
+- Aucun secret n'est stocké dans le dépôt : les mots de passe des bases sont créés dans des Secrets Kubernetes, lus par les pods.
 - Les fichiers d'identifiants (kubeconfig d'un cluster distant) se trouvent dans `secrets/`, **ignoré par Git**.
 - Pour un cluster distant, le kubeconfig serait un **secret GitHub Actions** (voir `01-cluster.md`, section 9).
-
-## 10. Limites
-
-- Les images ne passent pas par un registre : elles sont chargées directement dans le nœud kind (limite de l'environnement local).
-- Un seul cluster héberge `dev`, `test` et `prod` : l'isolation est logique (namespaces), pas matérielle.
-- La pipeline dépend d'une seule machine (le runner) : si elle est éteinte, rien ne se déploie.
-- Le retour arrière en production est manuel.
-
-## 11. Dépannage
-
-| Symptôme | Cause probable | Remède |
-|---|---|---|
-| jobs « Queued » qui n'avancent pas | runner hors ligne | l'allumer, vérifier `Idle` dans *Runners* |
-| `kind load` échoue | Docker arrêté | démarrer Docker Desktop |
-| `no matches for kind "Cluster"` dans `deploy.sh` | l'opérateur n'est pas installé sur le cluster du runner | `kubectl apply --server-side -k k8s/platform/cnpg` |
-| migration en échec | base pas prête, ou SQL invalide | `kubectl logs job/photo-migrate -n <env>` |
-| `deploy-prod` ne démarre pas | validation en attente (si configurée) | approuver dans l'onglet Actions |
